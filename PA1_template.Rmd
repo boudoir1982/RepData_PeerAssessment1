@@ -1,25 +1,91 @@
 ---
 title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+author: "Jinghong Yang"
+date: "December 12, 2015"
+output: html_document
 ---
 
-
 ## Loading and preprocessing the data
+Download and unzip the data, then load the data into workspace.
+```{r}
+temp <- tempfile()
+download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip",temp)
+activity_raw <- read.csv(unz(temp, "activity.csv"))
+unlink(temp)
+```
 
-
+Remove NA values.
+```{r}
+activity <- activity_raw[complete.cases(activity_raw),]
+```
 
 ## What is mean total number of steps taken per day?
+Calculate the total number of steps taken per day and make a histogram of the total number of steps taken each day
+```{r, echo=TRUE}
+stepsPday <- tapply(activity$steps, activity$date, mean)
+hist(stepsPday, breaks = 20, xlab = 'Steps per day', main = 'Histogram of Steps per day')
+```
 
-
+Calculate and report the mean and median of the total number of steps taken per day
+```{r}
+mean(stepsPday, na.rm = TRUE)
+median(stepsPday, na.rm = TRUE)
+```
 
 ## What is the average daily activity pattern?
+Make a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+```{r, echo=TRUE}
+stepsPattern <- tapply(activity$steps, activity$interval, mean)
+plot(unique(activity$interval), stepsPattern, type = "l", main = 'Daily activity Pattern', xlab = '5-minite interval', ylab = 'The average number of steps taken')
+```
 
-
+Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+```{r}
+which.max(stepsPattern)
+```
 
 ## Imputing missing values
+Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+```{r}
+sum(is.na(activity_raw))
+```
 
+Filling in all of the missing values using the mean for the 5-minute interval.
+Create a new dataset that is equal to the original dataset but with the missing data filled in.
+```{r}
+activity_fill <- activity_raw
+activity_fill$steps[which(is.na(activity_raw))] <- mean(stepsPattern)
+```
 
+Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. 
+```{r, echo=TRUE}
+stepsPday_fill <- tapply(activity_fill$steps, activity_fill$date, mean)
+hist(stepsPday_fill, breaks = 20, xlab = 'Steps per day', main = 'Histogram of Steps per day (filled missing values)')
+mean(stepsPday_fill, na.rm = TRUE)
+median(stepsPday_fill, na.rm = TRUE)
+```
+We can see that since we imput the missing values with its mean, the histgram is more center than before. And the median value approximates the mean.
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+Create a new factor variable in the dataset with two levels - "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
+```{r}
+#create a vector of weekdays
+weekdays <- c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday')
+#Use `%in%` and `weekdays` to create a logical vector
+#convert to `factor` and specify the `levels/labels`
+activity_fill$wDay <- factor(weekdays(as.Date(activity_fill$date)) %in% weekdays, 
+         levels=c(FALSE, TRUE), labels=c('weekend', 'weekday'))
+```
+
+Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis).
+```{r, echo=TRUE}
+stepsWDay <- tapply(activity_fill$steps, list(activity_fill$interval, activity_fill$wDay), mean)
+plot(unique(activity_fill$interval), stepsWDay[,1], type = "l", xlab = '5-minite interval', ylab = 'Number of steps', col = "red")
+lines(unique(activity_fill$interval),stepsWDay[,2],col="green")
+legend('topleft',  c('Weekends','Weekdays'), lty = 1, col = c('red', 'green'))
+```
+
+This person conducts more activities during the weekends, but does excercises during weekdays morning as well. Based the above information. This person probably sits in front of a computer whole day during workdays.
+
+
